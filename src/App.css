@@ -329,6 +329,9 @@
   opacity: 1;
 }
 
+.score-tappable { cursor: pointer; }
+.score-tappable:active { opacity: 0.5; }
+
 /* Color coding */
 .p1-color { color: var(--p1); }
 .p2-color { color: var(--p2); }

@@ -1,14 +1,26 @@
 import { useState } from 'react'
 import HandEntry from './HandEntry'
+import HandEdit from './HandEdit'
 import Settlement from './Settlement'
 
-export default function GameBoard({ players, sessionName, games, handLog, p1Level, p2Level, onAddHand, onExit }) {
+export default function GameBoard({ players, sessionName, games, handLog, p1Level, p2Level, onAddHand, onEditHand, onDeleteHand, onExit }) {
   const [showEntry, setShowEntry] = useState(false)
+  const [editingIdx, setEditingIdx] = useState(null)
   const [p1, p2] = players
 
   function confirmHand(winner, points) {
     setShowEntry(false)
     onAddHand(winner, points)
+  }
+
+  function confirmEdit(winner, points) {
+    onEditHand(editingIdx, winner, points)
+    setEditingIdx(null)
+  }
+
+  function confirmDelete() {
+    onDeleteHand(editingIdx)
+    setEditingIdx(null)
   }
 
   const allDone = games.every(g => g.done)
@@ -31,6 +43,7 @@ export default function GameBoard({ players, sessionName, games, handLog, p1Leve
             players={players}
             p1Active={p1Level > i}
             p2Active={p2Level > i}
+            onScoreClick={setEditingIdx}
           />
         ))}
       </div>
@@ -59,11 +72,21 @@ export default function GameBoard({ players, sessionName, games, handLog, p1Leve
           onCancel={() => setShowEntry(false)}
         />
       )}
+
+      {editingIdx !== null && (
+        <HandEdit
+          hand={handLog[editingIdx]}
+          players={players}
+          onSave={confirmEdit}
+          onDelete={confirmDelete}
+          onCancel={() => setEditingIdx(null)}
+        />
+      )}
     </div>
   )
 }
 
-function ScoreColumn({ gameIdx, game, handLog, players, p1Active, p2Active }) {
+function ScoreColumn({ gameIdx, game, handLog, players, p1Active, p2Active, onScoreClick }) {
   const [p1, p2] = players
   const name1 = p1.length > 6 ? p1.slice(0, 6) : p1
   const name2 = p2.length > 6 ? p2.slice(0, 6) : p2
@@ -73,12 +96,11 @@ function ScoreColumn({ gameIdx, game, handLog, players, p1Active, p2Active }) {
   // Each player's column = their own running totals, one entry per box won
   let p1Run = 0, p2Run = 0
   const p1Rows = [], p2Rows = []
-  handLog
-    .filter(h => h.activeSlots.includes(gameIdx))
-    .forEach(hand => {
-      if (hand.winner === 0) { p1Run += hand.points; p1Rows.push(p1Run) }
-      else                   { p2Run += hand.points; p2Rows.push(p2Run) }
-    })
+  handLog.forEach((hand, idx) => {
+    if (!hand.activeSlots.includes(gameIdx)) return
+    if (hand.winner === 0) { p1Run += hand.points; p1Rows.push({ val: p1Run, idx }) }
+    else                   { p2Run += hand.points; p2Rows.push({ val: p2Run, idx }) }
+  })
 
   const numRows = Math.max(p1Rows.length, p2Rows.length)
 
@@ -99,25 +121,33 @@ function ScoreColumn({ gameIdx, game, handLog, players, p1Active, p2Active }) {
           <div className="score-col-pending-msg">Not started</div>
         )}
         {Array.from({ length: numRows }, (_, i) => {
-          const p1Val = i < p1Rows.length ? p1Rows[i] : null
-          const p2Val = i < p2Rows.length ? p2Rows[i] : null
+          const p1Entry = i < p1Rows.length ? p1Rows[i] : null
+          const p2Entry = i < p2Rows.length ? p2Rows[i] : null
           const p1Final = i === p1Rows.length - 1
           const p2Final = i === p2Rows.length - 1
           return (
             <div key={i} className="score-run-row">
-              <span className={[
-                'score-run-val p1-color',
-                p1Final && p1Val !== null ? 'score-run-final' : '',
-                p1Final && game.p1 > game.p2 ? 'leading' : '',
-              ].join(' ')}>
-                {p1Val ?? ''}
+              <span
+                className={[
+                  'score-run-val p1-color',
+                  p1Final && p1Entry ? 'score-run-final' : '',
+                  p1Final && game.p1 > game.p2 ? 'leading' : '',
+                  p1Entry ? 'score-tappable' : '',
+                ].join(' ')}
+                onClick={() => p1Entry && onScoreClick(p1Entry.idx)}
+              >
+                {p1Entry?.val ?? ''}
               </span>
-              <span className={[
-                'score-run-val p2-color',
-                p2Final && p2Val !== null ? 'score-run-final' : '',
-                p2Final && game.p2 > game.p1 ? 'leading' : '',
-              ].join(' ')}>
-                {p2Val ?? ''}
+              <span
+                className={[
+                  'score-run-val p2-color',
+                  p2Final && p2Entry ? 'score-run-final' : '',
+                  p2Final && game.p2 > game.p1 ? 'leading' : '',
+                  p2Entry ? 'score-tappable' : '',
+                ].join(' ')}
+                onClick={() => p2Entry && onScoreClick(p2Entry.idx)}
+              >
+                {p2Entry?.val ?? ''}
               </span>
             </div>
           )

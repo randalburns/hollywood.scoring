@@ -20,6 +20,46 @@ function App() {
   const [games, setGames]             = useState([freshGame(), freshGame(), freshGame()])
   const [handLog, setHandLog]         = useState([])
 
+  function replayLog(rawLog) {
+    const gms = [freshGame(), freshGame(), freshGame()]
+    let pl1 = 0, pl2 = 0
+    const log = []
+    for (const { winner, points } of rawLog) {
+      const prevLevel = winner === 0 ? pl1 : pl2
+      const newLevel = Math.min(prevLevel + 1, 3)
+      const activeSlots = []
+      gms.forEach((g, i) => {
+        if (i >= newLevel || g.done) return
+        activeSlots.push(i)
+        if (winner === 0) g.p1 += points
+        else g.p2 += points
+        if (g.p1 >= 100 || g.p2 >= 100) g.done = true
+      })
+      if (winner === 0) pl1 = newLevel
+      else pl2 = newLevel
+      log.push({ handNum: log.length + 1, winner, points, activeSlots })
+    }
+    return { games: gms, p1Level: pl1, p2Level: pl2, handLog: log }
+  }
+
+  function applyReplay(result) {
+    setGames(result.games)
+    setP1Level(result.p1Level)
+    setP2Level(result.p2Level)
+    setHandLog(result.handLog)
+    persist(activeId, sessionName, players, result.p1Level, result.p2Level, result.games, result.handLog)
+  }
+
+  function editHand(idx, winner, points) {
+    const raw = handLog.map((h, i) => i === idx ? { winner, points } : { winner: h.winner, points: h.points })
+    applyReplay(replayLog(raw))
+  }
+
+  function deleteHand(idx) {
+    const raw = handLog.filter((_, i) => i !== idx).map(h => ({ winner: h.winner, points: h.points }))
+    applyReplay(replayLog(raw))
+  }
+
   function persist(id, name, plrs, pl1, pl2, gms, log) {
     const session = {
       id, name, players: plrs,
@@ -99,6 +139,8 @@ function App() {
       p1Level={p1Level}
       p2Level={p2Level}
       onAddHand={addHand}
+      onEditHand={editHand}
+      onDeleteHand={deleteHand}
       onExit={() => setScreen('home')}
     />
   )
