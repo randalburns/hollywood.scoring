@@ -25,7 +25,7 @@ export default function Setup({ onStart, onBack }) {
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="e.g. Saturday Night"
+              placeholder="e.g. Pants versus Jakers"
               autoCapitalize="words"
               autoComplete="off"
             />
